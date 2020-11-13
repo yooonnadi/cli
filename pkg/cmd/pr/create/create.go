@@ -216,6 +216,8 @@ func createRun(opts *CreateOptions) (err error) {
 		return err
 	}
 
+	defer shared.PreserveInput(opts.IO, *state, state, &err)()
+
 	templateContent := ""
 	if !opts.BodyProvided {
 		templateFiles, legacyTemplate := shared.FindTemplates(opts.RootDirOverride, "PULL_REQUEST_TEMPLATE")
