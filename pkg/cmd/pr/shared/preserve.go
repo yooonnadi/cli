@@ -14,6 +14,8 @@ import (
 
 func PreserveInput(io *iostreams.IOStreams, pre IssueMetadataState, post *IssueMetadataState, createErr *error) func() {
 	return func() {
+		fmt.Printf("DEBUG %#v\n", pre)
+		fmt.Printf("DEBUG %#v\n", post)
 		if reflect.DeepEqual(pre, *post) {
 			return
 		}

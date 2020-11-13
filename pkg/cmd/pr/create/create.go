@@ -217,6 +217,7 @@ func createRun(opts *CreateOptions) (err error) {
 	}
 
 	defer shared.PreserveInput(opts.IO, *state, state, &err)()
+	// TODO pre body is blank
 
 	templateContent := ""
 	if !opts.BodyProvided {
