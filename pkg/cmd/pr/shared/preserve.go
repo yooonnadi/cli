@@ -49,8 +49,13 @@ func PreserveInput(io *iostreams.IOStreams, state *IssueMetadataState, createErr
 
 		cs := io.ColorScheme()
 
+		issueType := "pr"
+		if state.Type == IssueMetadata {
+			issueType = "issue"
+		}
+
 		fmt.Fprintf(out, "%s operation failed. input saved to: %s\n", cs.FailureIcon(), dumpPath)
-		fmt.Fprintln(out, fmt.Sprintf("resubmit with: gh pr create -j@%s", dumpPath))
+		fmt.Fprintln(out, fmt.Sprintf("resubmit with: gh %s create -j@%s", issueType, dumpPath))
 		fmt.Fprintln(out)
 	}
 }
