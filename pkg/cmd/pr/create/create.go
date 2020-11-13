@@ -150,14 +150,14 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 func createRun(opts *CreateOptions) (err error) {
 	ctx, err := NewCreateContext(opts)
 	if err != nil {
-		return err
+		return
 	}
 
 	client := ctx.Client
 
 	state, err := NewIssueState(*ctx, *opts)
 	if err != nil {
-		return err
+		return
 	}
 
 	if opts.WebMode {
@@ -165,9 +165,9 @@ func createRun(opts *CreateOptions) (err error) {
 			state.Title = opts.Title
 			state.Body = opts.Body
 		}
-		err := handlePush(*opts, *ctx)
+		err = handlePush(*opts, *ctx)
 		if err != nil {
-			return err
+			return
 		}
 		return previewPR(*opts, *ctx, *state)
 	}
@@ -208,7 +208,7 @@ func createRun(opts *CreateOptions) (err error) {
 	if opts.Autofill || (opts.TitleProvided && opts.BodyProvided) {
 		err = handlePush(*opts, *ctx)
 		if err != nil {
-			return err
+			return
 		}
 		return submitPR(*opts, *ctx, *state)
 	}
@@ -221,7 +221,7 @@ func createRun(opts *CreateOptions) (err error) {
 
 		err = handlePush(*opts, *ctx)
 		if err != nil {
-			return err
+			return
 		}
 
 		return submitPR(*opts, *ctx, *state)
@@ -230,13 +230,13 @@ func createRun(opts *CreateOptions) (err error) {
 	if !opts.TitleProvided {
 		err = shared.TitleSurvey(state)
 		if err != nil {
-			return err
+			return
 		}
 	}
 
 	editorCommand, err := cmdutil.DetermineEditor(opts.Config)
 	if err != nil {
-		return err
+		return
 	}
 
 	defer shared.PreserveInput(opts.IO, state, &err)()
@@ -247,12 +247,12 @@ func createRun(opts *CreateOptions) (err error) {
 
 		templateContent, err = shared.TemplateSurvey(templateFiles, legacyTemplate, *state)
 		if err != nil {
-			return err
+			return
 		}
 
 		err = shared.BodySurvey(state, templateContent, editorCommand)
 		if err != nil {
-			return err
+			return
 		}
 
 		if state.Body == "" {
@@ -269,12 +269,12 @@ func createRun(opts *CreateOptions) (err error) {
 	if action == shared.MetadataAction {
 		err = shared.MetadataSurvey(opts.IO, client, ctx.BaseRepo, state)
 		if err != nil {
-			return err
+			return
 		}
 
 		action, err = shared.ConfirmSubmission(!state.HasMetadata(), false)
 		if err != nil {
-			return err
+			return
 		}
 	}
 
@@ -285,7 +285,7 @@ func createRun(opts *CreateOptions) (err error) {
 
 	err = handlePush(*opts, *ctx)
 	if err != nil {
-		return err
+		return
 	}
 
 	if action == shared.PreviewAction {
@@ -296,7 +296,8 @@ func createRun(opts *CreateOptions) (err error) {
 		return submitPR(*opts, *ctx, *state)
 	}
 
-	return errors.New("expected to cancel, preview, or submit")
+	err = errors.New("expected to cancel, preview, or submit")
+	return
 }
 
 func initDefaultTitleBody(ctx CreateContext, state *shared.IssueMetadataState) error {

@@ -87,16 +87,16 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	return cmd
 }
 
-func createRun(opts *CreateOptions) error {
+func createRun(opts *CreateOptions) (err error) {
 	httpClient, err := opts.HttpClient()
 	if err != nil {
-		return err
+		return
 	}
 	apiClient := api.NewClientFromHTTP(httpClient)
 
 	baseRepo, err := opts.BaseRepo()
 	if err != nil {
-		return err
+		return
 	}
 
 	templateFiles, legacyTemplate := prShared.FindTemplates(opts.RootDirOverride, "ISSUE_TEMPLATE")
@@ -123,7 +123,7 @@ func createRun(opts *CreateOptions) error {
 		if opts.Title != "" || opts.Body != "" {
 			openURL, err = prShared.WithPrAndIssueQueryParams(openURL, tb)
 			if err != nil {
-				return err
+				return
 			}
 		} else if len(templateFiles) > 1 {
 			openURL += "/choose"
@@ -140,24 +140,28 @@ func createRun(opts *CreateOptions) error {
 
 	repo, err := api.GitHubRepo(apiClient, baseRepo)
 	if err != nil {
-		return err
+		return
 	}
 	if !repo.HasIssuesEnabled {
-		return fmt.Errorf("the '%s' repository has disabled issues", ghrepo.FullName(baseRepo))
+		err = fmt.Errorf("the '%s' repository has disabled issues", ghrepo.FullName(baseRepo))
+		return
 	}
 
 	action := prShared.SubmitAction
 
 	if opts.Interactive {
-		editorCommand, err := cmdutil.DetermineEditor(opts.Config)
+		var editorCommand string
+		editorCommand, err = cmdutil.DetermineEditor(opts.Config)
 		if err != nil {
-			return err
+			return
 		}
+
+		defer prShared.PreserveInput(opts.IO, &tb, &err)()
 
 		if tb.Title == "" {
 			err = prShared.TitleSurvey(&tb)
 			if err != nil {
-				return err
+				return
 			}
 		}
 
@@ -166,12 +170,12 @@ func createRun(opts *CreateOptions) error {
 
 			templateContent, err = prShared.TemplateSurvey(templateFiles, legacyTemplate, tb)
 			if err != nil {
-				return err
+				return
 			}
 
 			err = prShared.BodySurvey(&tb, templateContent, editorCommand)
 			if err != nil {
-				return err
+				return
 			}
 
 			if tb.Body == "" {
@@ -179,31 +183,33 @@ func createRun(opts *CreateOptions) error {
 			}
 		}
 
-		action, err := prShared.ConfirmSubmission(!tb.HasMetadata(), repo.ViewerCanTriage())
+		var action prShared.Action
+		action, err = prShared.ConfirmSubmission(!tb.HasMetadata(), repo.ViewerCanTriage())
 		if err != nil {
-			return fmt.Errorf("unable to confirm: %w", err)
+			err = fmt.Errorf("unable to confirm: %w", err)
+			return
 		}
 
 		if action == prShared.MetadataAction {
 			err = prShared.MetadataSurvey(opts.IO, apiClient, baseRepo, &tb)
 			if err != nil {
-				return err
+				return
 			}
 
 			action, err = prShared.ConfirmSubmission(!tb.HasMetadata(), false)
 			if err != nil {
-				return err
+				return
 			}
 		}
 
 		if action == prShared.CancelAction {
 			fmt.Fprintln(opts.IO.ErrOut, "Discarding.")
-
-			return nil
+			return
 		}
 	} else {
 		if tb.Title == "" {
-			return fmt.Errorf("title can't be blank")
+			err = fmt.Errorf("title can't be blank")
+			return
 		}
 	}
 
@@ -211,7 +217,7 @@ func createRun(opts *CreateOptions) error {
 		openURL := ghrepo.GenerateRepoURL(baseRepo, "issues/new")
 		openURL, err = prShared.WithPrAndIssueQueryParams(openURL, tb)
 		if err != nil {
-			return err
+			return
 		}
 		if isTerminal {
 			fmt.Fprintf(opts.IO.ErrOut, "Opening %s in your browser.\n", utils.DisplayURL(openURL))
@@ -225,12 +231,13 @@ func createRun(opts *CreateOptions) error {
 
 		err = prShared.AddMetadataToIssueParams(apiClient, baseRepo, params, &tb)
 		if err != nil {
-			return err
+			return
 		}
 
-		newIssue, err := api.IssueCreate(apiClient, repo, params)
+		var newIssue *api.Issue
+		newIssue, err = api.IssueCreate(apiClient, repo, params)
 		if err != nil {
-			return err
+			return
 		}
 
 		fmt.Fprintln(opts.IO.Out, newIssue.URL)
@@ -238,5 +245,5 @@ func createRun(opts *CreateOptions) error {
 		panic("Unreachable state")
 	}
 
-	return nil
+	return
 }
