@@ -34,7 +34,9 @@ func PreserveInput(io *iostreams.IOStreams, state *IssueMetadataState, createErr
 			return
 		}
 
-		dumpFilename := fmt.Sprintf("gh-dump-%x.json", time.Now().UnixNano())
+		random := fmt.Sprintf("%x", time.Now().UnixNano())
+		random = random[len(random)-5:]
+		dumpFilename := fmt.Sprintf("gh%s.json", random)
 		dumpPath := filepath.Join(os.TempDir(), dumpFilename)
 
 		err = ioutil.WriteFile(dumpPath, data, 0660)
@@ -46,10 +48,9 @@ func PreserveInput(io *iostreams.IOStreams, state *IssueMetadataState, createErr
 		}
 
 		cs := io.ColorScheme()
-		// TODO more explicit directions using file name
-		// TODO shorter filename for dump file
 
 		fmt.Fprintf(out, "%s operation failed. input saved to: %s\n", cs.FailureIcon(), dumpPath)
-		fmt.Fprintln(out, "(hint: you can restore with the --json flag)")
+		fmt.Fprintln(out, fmt.Sprintf("resubmit with: gh pr create -j@%s", dumpPath))
+		fmt.Fprintln(out)
 	}
 }
