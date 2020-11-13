@@ -56,6 +56,8 @@ func PreserveInput(io *iostreams.IOStreams, state *IssueMetadataState, createErr
 
 		fmt.Fprintf(out, "%s operation failed. input saved to: %s\n", cs.FailureIcon(), dumpPath)
 		fmt.Fprintln(out, fmt.Sprintf("resubmit with: gh %s create -j@%s", issueType, dumpPath))
+
+		// some whitespace before the actual error
 		fmt.Fprintln(out)
 	}
 }

@@ -1,7 +1,6 @@
 package create
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -214,7 +213,7 @@ func createRun(opts *CreateOptions) (err error) {
 	}
 
 	if opts.JSONFill {
-		err = fillFromJSON(opts.IO, opts.JSONInput, state)
+		err = shared.FillFromJSON(opts.IO, opts.JSONInput, state)
 		if err != nil {
 			return fmt.Errorf("could not use JSON input: %w", err)
 		}
@@ -698,26 +697,6 @@ func generateCompareURL(ctx CreateContext, state shared.IssueMetadataState) (str
 		return "", err
 	}
 	return url, nil
-}
-
-func fillFromJSON(io *iostreams.IOStreams, JSONInput string, state *shared.IssueMetadataState) error {
-	var data []byte
-	var err error
-	if strings.HasPrefix(JSONInput, "@") {
-		data, err = io.ReadUserFile(JSONInput[1:])
-		if err != nil {
-			return fmt.Errorf("failed to read file %s: %w", JSONInput[1:], err)
-		}
-	} else {
-		data = []byte(JSONInput)
-	}
-
-	err = json.Unmarshal(data, state)
-	if err != nil {
-		return fmt.Errorf("JSON parsing failure: %w", err)
-	}
-
-	return nil
 }
 
 var gitPushRegexp = regexp.MustCompile("^remote: (Create a pull request.*by visiting|[[:space:]]*https://.*/pull/new/).*\n?$")

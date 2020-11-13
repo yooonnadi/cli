@@ -16,54 +16,6 @@ import (
 )
 
 type Action int
-type metadataStateType int
-
-const (
-	IssueMetadata metadataStateType = iota
-	PRMetadata
-)
-
-type IssueMetadataState struct {
-	Type metadataStateType
-
-	Draft bool
-
-	Body  string
-	Title string
-
-	Metadata   []string
-	Reviewers  []string
-	Assignees  []string
-	Labels     []string
-	Projects   []string
-	Milestones []string
-
-	MetadataResult *api.RepoMetadataResult
-
-	dirty bool // whether user i/o has modified this
-}
-
-func (tb *IssueMetadataState) MarkDirty() {
-	tb.dirty = true
-}
-
-func (tb *IssueMetadataState) IsDirty() bool {
-	return tb.dirty ||
-		tb.Metadata != nil ||
-		tb.Reviewers != nil ||
-		tb.Assignees != nil ||
-		tb.Labels != nil ||
-		tb.Projects != nil ||
-		tb.Milestones != nil
-}
-
-func (tb *IssueMetadataState) HasMetadata() bool {
-	return len(tb.Reviewers) > 0 ||
-		len(tb.Assignees) > 0 ||
-		len(tb.Labels) > 0 ||
-		len(tb.Projects) > 0 ||
-		len(tb.Milestones) > 0
-}
 
 const (
 	SubmitAction Action = iota

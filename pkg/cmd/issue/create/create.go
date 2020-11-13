@@ -26,6 +26,8 @@ type CreateOptions struct {
 
 	RepoOverride string
 	WebMode      bool
+	JSONFill     bool
+	JSONInput    string
 
 	Title       string
 	Body        string
@@ -62,11 +64,20 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			titleProvided := cmd.Flags().Changed("title")
 			bodyProvided := cmd.Flags().Changed("body")
 			opts.RepoOverride, _ = cmd.Flags().GetString("repo")
+			opts.JSONFill = cmd.Flags().Changed("json")
 
 			opts.Interactive = !(titleProvided && bodyProvided)
 
 			if opts.Interactive && !opts.IO.CanPrompt() {
 				return &cmdutil.FlagError{Err: errors.New("must provide --title and --body when not running interactively")}
+			}
+
+			if opts.JSONFill {
+				opts.Interactive = false
+
+				if opts.WebMode {
+					return errors.New("--web and --json are mutually exclusive")
+				}
 			}
 
 			if runF != nil {
@@ -83,6 +94,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	cmd.Flags().StringSliceVarP(&opts.Labels, "label", "l", nil, "Add labels by `name`")
 	cmd.Flags().StringSliceVarP(&opts.Projects, "project", "p", nil, "Add the issue to projects by `name`")
 	cmd.Flags().StringVarP(&opts.Milestone, "milestone", "m", "", "Add the issue to a milestone by `name`")
+	cmd.Flags().StringVarP(&opts.JSONInput, "json", "j", "", "Use JSON to populate and submit issue")
 
 	return cmd
 }
@@ -206,6 +218,13 @@ func createRun(opts *CreateOptions) (err error) {
 			fmt.Fprintln(opts.IO.ErrOut, "Discarding.")
 			return
 		}
+	} else if opts.JSONFill {
+		err = prShared.FillFromJSON(opts.IO, opts.JSONInput, &tb)
+		if err != nil {
+			return
+		}
+
+		action = prShared.SubmitAction
 	} else {
 		if tb.Title == "" {
 			err = fmt.Errorf("title can't be blank")
