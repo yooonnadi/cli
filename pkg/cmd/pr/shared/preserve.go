@@ -17,7 +17,7 @@ func PreserveInput(io *iostreams.IOStreams, state *IssueMetadataState, createErr
 			return
 		}
 
-		if createErr == nil {
+		if *createErr == nil {
 			return
 		}
 
