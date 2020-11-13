@@ -1,6 +1,7 @@
 package create
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -38,8 +39,10 @@ type CreateOptions struct {
 	RootDirOverride string
 	RepoOverride    string
 
-	Autofill bool
-	WebMode  bool
+	Autofill  bool
+	WebMode   bool
+	JSONFill  bool
+	JSONInput string
 
 	IsDraft    bool
 	Title      string
@@ -99,11 +102,12 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		`),
 		Args: cmdutil.NoArgsQuoteReminder,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.JSONFill = cmd.Flags().Changed("json")
 			opts.TitleProvided = cmd.Flags().Changed("title")
 			opts.BodyProvided = cmd.Flags().Changed("body")
 			opts.RepoOverride, _ = cmd.Flags().GetString("repo")
 
-			if !opts.IO.CanPrompt() && !opts.WebMode && !opts.TitleProvided && !opts.Autofill {
+			if !opts.IO.CanPrompt() && !opts.JSONFill && !opts.WebMode && !opts.TitleProvided && !opts.Autofill {
 				return &cmdutil.FlagError{Err: errors.New("--title or --fill required when not running interactively")}
 			}
 
@@ -112,6 +116,10 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			}
 			if len(opts.Reviewers) > 0 && opts.WebMode {
 				return errors.New("the --reviewer flag is not supported with --web")
+			}
+
+			if opts.JSONFill && opts.WebMode {
+				return errors.New("--web and --json are mutually exclusive")
 			}
 
 			if runF != nil {
@@ -134,6 +142,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	fl.StringSliceVarP(&opts.Labels, "label", "l", nil, "Add labels by `name`")
 	fl.StringSliceVarP(&opts.Projects, "project", "p", nil, "Add the pull request to projects by `name`")
 	fl.StringVarP(&opts.Milestone, "milestone", "m", "", "Add the pull request to a milestone by `name`")
+	fl.StringVarP(&opts.JSONInput, "json", "j", "", "Use JSON to populate and submit PR")
 
 	return cmd
 }
@@ -201,6 +210,20 @@ func createRun(opts *CreateOptions) (err error) {
 		if err != nil {
 			return err
 		}
+		return submitPR(*opts, *ctx, *state)
+	}
+
+	if opts.JSONFill {
+		err = fillFromJSON(opts.IO, opts.JSONInput, state)
+		if err != nil {
+			return fmt.Errorf("could not use JSON input: %w", err)
+		}
+
+		err = handlePush(*opts, *ctx)
+		if err != nil {
+			return err
+		}
+
 		return submitPR(*opts, *ctx, *state)
 	}
 
@@ -674,6 +697,26 @@ func generateCompareURL(ctx CreateContext, state shared.IssueMetadataState) (str
 		return "", err
 	}
 	return url, nil
+}
+
+func fillFromJSON(io *iostreams.IOStreams, JSONInput string, state *shared.IssueMetadataState) error {
+	var data []byte
+	var err error
+	if strings.HasPrefix(JSONInput, "@") {
+		data, err = io.ReadUserFile(JSONInput[1:])
+		if err != nil {
+			return fmt.Errorf("failed to read file %s: %w", JSONInput[1:], err)
+		}
+	} else {
+		data = []byte(JSONInput)
+	}
+
+	err = json.Unmarshal(data, state)
+	if err != nil {
+		return fmt.Errorf("JSON parsing failure: %w", err)
+	}
+
+	return nil
 }
 
 var gitPushRegexp = regexp.MustCompile("^remote: (Create a pull request.*by visiting|[[:space:]]*https://.*/pull/new/).*\n?$")
