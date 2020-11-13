@@ -6,17 +6,14 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"time"
 
 	"github.com/cli/cli/pkg/iostreams"
 )
 
-func PreserveInput(io *iostreams.IOStreams, pre IssueMetadataState, post *IssueMetadataState, createErr *error) func() {
+func PreserveInput(io *iostreams.IOStreams, state *IssueMetadataState, createErr *error) func() {
 	return func() {
-		fmt.Printf("DEBUG %#v\n", pre)
-		fmt.Printf("DEBUG %#v\n", post)
-		if reflect.DeepEqual(pre, *post) {
+		if !state.IsDirty() {
 			return
 		}
 
@@ -29,11 +26,11 @@ func PreserveInput(io *iostreams.IOStreams, pre IssueMetadataState, post *IssueM
 		// this extra newline guards against appending to the end of a survey line
 		fmt.Fprintln(out)
 
-		data, err := json.Marshal(post)
+		data, err := json.Marshal(state)
 		if err != nil {
 			fmt.Fprintf(out, "failed to save input to file: %s\n", err)
 			fmt.Fprintln(out, "would have saved:")
-			fmt.Fprintf(out, "%v\n", post)
+			fmt.Fprintf(out, "%v\n", state)
 			return
 		}
 

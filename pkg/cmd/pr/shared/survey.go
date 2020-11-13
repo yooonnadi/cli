@@ -39,6 +39,22 @@ type IssueMetadataState struct {
 	Milestones []string
 
 	MetadataResult *api.RepoMetadataResult
+
+	dirty bool // whether user i/o has modified this
+}
+
+func (tb *IssueMetadataState) MarkDirty() {
+	tb.dirty = true
+}
+
+func (tb *IssueMetadataState) IsDirty() bool {
+	return tb.dirty ||
+		tb.Metadata != nil ||
+		tb.Reviewers != nil ||
+		tb.Assignees != nil ||
+		tb.Labels != nil ||
+		tb.Projects != nil ||
+		tb.Milestones != nil
 }
 
 func (tb *IssueMetadataState) HasMetadata() bool {
@@ -170,6 +186,8 @@ func BodySurvey(state *IssueMetadataState, templateContent, editorCommand string
 		state.Body += templateContent
 	}
 
+	preBody := state.Body
+
 	// TODO should just be an AskOne but ran into problems with the stubber
 	qs := []*survey.Question{
 		{
@@ -193,10 +211,16 @@ func BodySurvey(state *IssueMetadataState, templateContent, editorCommand string
 		return err
 	}
 
+	if state.Body != "" && preBody != state.Body {
+		state.MarkDirty()
+	}
+
 	return nil
 }
 
 func TitleSurvey(state *IssueMetadataState) error {
+	preTitle := state.Title
+
 	// TODO should just be an AskOne but ran into problems with the stubber
 	qs := []*survey.Question{
 		{
@@ -211,6 +235,10 @@ func TitleSurvey(state *IssueMetadataState) error {
 	err := prompt.SurveyAsk(qs, state)
 	if err != nil {
 		return err
+	}
+
+	if preTitle != state.Title {
+		state.MarkDirty()
 	}
 
 	return nil
