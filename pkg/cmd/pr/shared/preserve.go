@@ -11,6 +11,11 @@ import (
 	"github.com/cli/cli/pkg/iostreams"
 )
 
+// TODO very unsure how to test this, specifically:
+// - ioutil.WriteFile -- how to handle
+// - timestamp -- what are we doing for this?
+// - can i force an error in pr/issue creation and test from the
+//   outside like that? should i, or is just unit testing this correct?
 func PreserveInput(io *iostreams.IOStreams, state *IssueMetadataState, createErr *error) func() {
 	return func() {
 		if !state.IsDirty() {
